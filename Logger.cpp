@@ -10,6 +10,12 @@ namespace Fetcko {
 // ===============================================
 std::size_t Logger::maxClassNameWidth = 0;
 
+const std::map<Logger::Level, std::string_view> Logger::Labels {
+		{ Level::Info,		" Info  " },
+		{ Level::Debug,		" Debug " },
+		{ Level::Warning,	"Warning" },
+		{ Level::Error,		" Error " }
+};
 // ===============================================
 // ============= Member Functions ================
 // ===============================================

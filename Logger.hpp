@@ -161,12 +161,7 @@ private:
 	static inline const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
 #endif
 
-	static const inline std::map<Level, std::string_view> Labels{
-		{ Level::Info, "Info" },
-		{ Level::Debug, "Debug" },
-		{ Level::Warning, "Warning" },
-		{ Level::Error, "Error" }
-	};
+	static const std::map<Level, std::string_view> Labels;
 
 	LoggableClass *object = nullptr;
 };
