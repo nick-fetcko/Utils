@@ -3,6 +3,7 @@
 #include <chrono>
 #include <functional>
 #include <iostream>
+#include <iomanip>
 #include <map>
 #include <string_view>
 #include <thread>
@@ -23,6 +24,9 @@
 namespace Fetcko {
 class LoggableClass;
 class Logger {
+private:
+	static std::size_t maxClassNameWidth;
+
 public:
 	enum class Level {
 		Info,
@@ -33,7 +37,7 @@ public:
 
 	static inline Level logLevel = Level::Info;
 
-	void SetObject(LoggableClass *object) { this->object = object; }
+	void SetObject(LoggableClass *object);
 	void SetLogLevel(Level logLevel) { this->logLevel = logLevel; }
 
 	template <typename T>
@@ -78,6 +82,9 @@ public:
 				<< "] ("
 				<< std::put_time(std::localtime(&time), "%d%b%Y %H:%M:%S")
 				<< ") "
+				<< std::setw(maxClassNameWidth)
+				<< std::left
+				<< std::setfill(' ')
 				<< typeid(*object).name();
 
 			if (name.size()) {

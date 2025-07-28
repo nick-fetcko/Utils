@@ -12,6 +12,7 @@ set(_utils_headers
 	)
 set(_utils_sources
 	Utils.cpp
+	Logger.cpp
 	)
 
 add_library(Utils STATIC ${_utils_headers} ${_utils_sources})
