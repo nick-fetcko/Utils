@@ -5,6 +5,7 @@
 #include <iostream>
 #include <iomanip>
 #include <map>
+#include <mutex>
 #include <sstream>
 #include <string_view>
 #include <thread>
@@ -25,7 +26,18 @@
 namespace Fetcko {
 class LoggableClass;
 class Logger {
+public:
+	using Command = std::function<void(const std::vector<std::string> &)>;
+
+	static void AddCommands(std::map<std::string, Command> &&commands);
+
 private:
+	static std::thread StartReadThread();
+	static std::thread readThread;
+	static std::map<std::string, Command> commands;
+
+	static std::mutex mutex;
+
 	static std::size_t maxClassNameWidth;
 
 public:
@@ -36,33 +48,64 @@ public:
 		Error
 	};
 
-	static inline Level logLevel = Level::Info;
+	static Level logLevel;
 
 	void SetObject(LoggableClass *object);
 	void SetLogLevel(Level logLevel) { this->logLevel = logLevel; }
 
-	template <typename T>
-	void Log(T t) {
-		std::cout << t << std::endl;
-
-#ifdef WIN32
-		SetConsoleTextAttribute(
-			out,
-			static_cast<WORD>(WindowsConsoleColors::Default)
-		);
-#endif
+	template<typename T, typename... Args>
+	void LogInfo(T t, Args... args) const {
+		std::unique_lock lock(mutex);
+		Log(Level::Info, t, args...);
+		PrintPrompt();
 	}
 
 	template<typename T, typename... Args>
-	void Log(Level level, T t, Args... args) {
+	void LogDebug(T t, Args... args) const {
+		std::unique_lock lock(mutex);
+		Log(Level::Debug, t, args...);
+		PrintPrompt();
+	}
+
+	template<typename T, typename... Args>
+	void LogWarning(T t, Args... args) const {
+		std::unique_lock lock(mutex);
+		Log(Level::Warning, t, args...);
+		PrintPrompt();
+	}
+
+	template<typename T, typename... Args>
+	void LogError(T t, Args... args) const {
+		std::unique_lock lock(mutex);
+		Log(Level::Error, t, args...);
+		PrintPrompt();
+	}
+
+	static void SetOnClose(std::function<void()> &&f) { onClose = f; }
+	static const std::function<void()> &GetOnClose() { return onClose; }
+
+	static void OnDestroy() {
+#ifdef WIN32
+		FreeConsole();
+#endif
+	}
+
+private:
+	template <typename T>
+	void Log(T t) const {
+		std::cout << t;
+	}
+
+	template<typename T, typename... Args>
+	void Log(Level level, T t, Args... args) const {
 		if (level >= logLevel) {
 			Log(level, t);
 			Log(args...);
 		}
 	}
 
-	template<typename T, typename... Args>
-	void Log(Level level, T t) {
+	template<typename T>
+	void Log(Level level, T t) const {
 		if (level >= logLevel) {
 #ifdef WIN32
 			SetConsoleTextAttribute(
@@ -78,7 +121,7 @@ public:
 			const auto &name = object->GetName();
 
 			std::cout
-				<< "["
+				<< "\r["
 				<< Labels.at(level)
 				<< "] ("
 				<< std::put_time(std::localtime(&time), "%d%b%Y %H:%M:%S")
@@ -111,30 +154,24 @@ public:
 	}
 
 	template<typename T, typename... Args>
-	void LogInfo(T t, Args... args) {
-		Log(Level::Info, t, args...);
-	}
-
-	template<typename T, typename... Args>
-	void LogDebug(T t, Args... args) {
-		Log(Level::Debug, t, args...);
-	}
-
-	template<typename T, typename... Args>
-	void LogWarning(T t, Args... args) {
-		Log(Level::Warning, t, args...);
-	}
-
-	template<typename T, typename... Args>
-	void LogError(T t, Args... args) {
-		Log(Level::Error, t, args...);
-	}
-
-private:
-	template<typename T, typename... Args>
-	void Log(T t, Args... args) {
+	void Log(T t, Args... args) const {
 		std::cout << t;
 		Log(args...);
+	}
+
+	void PrintPrompt() const {
+		std::cout << std::endl;
+
+		if (commands.empty()) return;
+
+#ifdef WIN32
+		SetConsoleTextAttribute(
+			out,
+			static_cast<WORD>(WindowsConsoleColors::Default)
+		);
+#endif
+
+		std::cout << " > ";
 	}
 
 #ifdef WIN32
@@ -157,19 +194,16 @@ private:
 		White
 	};
 
-	static const inline std::map<Level, WindowsConsoleColors> Colors = {
-		{ Level::Info, WindowsConsoleColors::DarkCyan },
-		{ Level::Debug, WindowsConsoleColors::DarkGreen },
-		{ Level::Warning, WindowsConsoleColors::DarkYellow },
-		{ Level::Error, WindowsConsoleColors::DarkRed }
-	};
+	static const std::map<Level, WindowsConsoleColors> Colors;
 
-	static inline const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+	static const HANDLE out;
 #endif
 
 	static const std::map<Level, std::string_view> Labels;
 
 	LoggableClass *object = nullptr;
+
+	static std::function<void()> onClose;
 };
 
 class LoggableClass {
