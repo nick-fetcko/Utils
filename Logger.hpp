@@ -5,6 +5,7 @@
 #include <iostream>
 #include <iomanip>
 #include <map>
+#include <sstream>
 #include <string_view>
 #include <thread>
 
@@ -94,10 +95,15 @@ public:
 					<< ")";
 			}
 
+			std::stringstream addressStream;
+			addressStream << std::hex << object;
+			auto address = addressStream.str();
+			address.erase(0, address.find_first_not_of('0'));
+
 			std::cout
 				<< " [0x"
 				<< std::hex
-				<< object
+				<< address
 				<< std::dec
 				<< "]: "
 				<< t;
