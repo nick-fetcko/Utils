@@ -22,6 +22,8 @@ namespace Fetcko {
 // ===============================================
 std::mutex Logger::mutex;
 std::map<std::string, Logger::Command> Logger::commands;
+std::queue<std::pair<Logger::Command, std::vector<std::string>>> Logger::commandQueue;
+
 std::size_t Logger::maxClassNameWidth = 0;
 
 std::thread Logger::StartReadThread() {
@@ -33,7 +35,7 @@ std::thread Logger::StartReadThread() {
 			if (auto split = Fetcko::Utils::Split(line, ' '); !split.empty()) {
 				std::unique_lock lock(mutex);
 				if (auto iter = commands.find(split[0]); iter != commands.end())
-					iter->second(split);
+					commandQueue.emplace(std::make_pair(iter->second, split));// iter->second(split);
 			}
 			std::cout << " > ";
 		}
@@ -46,6 +48,21 @@ std::thread Logger::StartReadThread() {
 	ret.detach();
 
 	return ret;
+}
+
+std::atomic<bool> Logger::processingCommands = false;
+
+void Logger::ProcessCommands() {
+	{
+		std::unique_lock lock(mutex);
+		processingCommands = true;
+		while (!commandQueue.empty()) {
+			auto &[f, split] = commandQueue.front();
+			f(split);
+			commandQueue.pop();
+		}
+	}
+	processingCommands = false;
 }
 
 std::thread Logger::readThread = Logger::StartReadThread();
@@ -95,7 +112,10 @@ void Logger::AddCommands(std::map<std::string, Command> &&commands) {
 void Logger::SetObject(LoggableClass *object) {
 	this->object = object;
 
-	std::unique_lock lock(mutex);
+	std::unique_lock lock(mutex, std::defer_lock);
+
+	if (!processingCommands) lock.lock();
+
 	if (auto width = std::strlen(typeid(*object).name()); width > maxClassNameWidth)
 		maxClassNameWidth = width;
 }

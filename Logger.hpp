@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <map>
 #include <mutex>
+#include <queue>
 #include <sstream>
 #include <string_view>
 #include <thread>
@@ -30,13 +31,16 @@ public:
 	using Command = std::function<void(const std::vector<std::string> &)>;
 
 	static void AddCommands(std::map<std::string, Command> &&commands);
+	static void ProcessCommands();
 
 private:
 	static std::thread StartReadThread();
 	static std::thread readThread;
 	static std::map<std::string, Command> commands;
+	static std::queue<std::pair<Command, std::vector<std::string>>> commandQueue;
 
 	static std::mutex mutex;
+	static std::atomic<bool> processingCommands;
 
 	static std::size_t maxClassNameWidth;
 
@@ -55,28 +59,40 @@ public:
 
 	template<typename T, typename... Args>
 	void LogInfo(T t, Args... args) const {
-		std::unique_lock lock(mutex);
+		std::unique_lock lock(mutex, std::defer_lock);
+
+		if (!processingCommands) lock.lock();
+
 		Log(Level::Info, t, args...);
 		PrintPrompt();
 	}
 
 	template<typename T, typename... Args>
 	void LogDebug(T t, Args... args) const {
-		std::unique_lock lock(mutex);
+		std::unique_lock lock(mutex, std::defer_lock);
+
+		if (!processingCommands) lock.lock();
+
 		Log(Level::Debug, t, args...);
 		PrintPrompt();
 	}
 
 	template<typename T, typename... Args>
 	void LogWarning(T t, Args... args) const {
-		std::unique_lock lock(mutex);
+		std::unique_lock lock(mutex, std::defer_lock);
+
+		if (!processingCommands) lock.lock();
+
 		Log(Level::Warning, t, args...);
 		PrintPrompt();
 	}
 
 	template<typename T, typename... Args>
 	void LogError(T t, Args... args) const {
-		std::unique_lock lock(mutex);
+		std::unique_lock lock(mutex, std::defer_lock);
+
+		if (!processingCommands) lock.lock();
+
 		Log(Level::Error, t, args...);
 		PrintPrompt();
 	}
