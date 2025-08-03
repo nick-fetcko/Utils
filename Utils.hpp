@@ -100,6 +100,9 @@ public:
 	template<typename C>
 	static inline void ltrim(std::basic_string<C> &s) {
 		s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](C ch) {
+			if (ch < -1 || ch > 255)
+				return true;
+
 			return !std::isspace(ch);
 		}));
 	}
@@ -108,6 +111,9 @@ public:
 	template <typename C>
 	static inline void rtrim(std::basic_string<C> &s) {
 		s.erase(std::find_if(s.rbegin(), s.rend(), [](C ch) {
+			if (ch < -1 || ch > 255)
+				return true;
+
 			return !std::isspace(ch);
 		}).base(), s.end());
 	}
