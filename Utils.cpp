@@ -23,11 +23,15 @@ std::string Utils::GetStringFromFile(const std::filesystem::path & path) {
 	return buffer.str();
 }
 
-std::filesystem::path Utils::GetResource(const std::filesystem::path &path) {
+std::filesystem::path Utils::GetResourceFolder() {
 #ifdef _DEBUG
-	return std::filesystem::path("..") / ".." / "Data" / path;
+	return std::filesystem::path("..") / ".." / "Data";
 #else
-	return std::filesystem::path(".") / "Data" / path;
+	return std::filesystem::path(".") / "Data";
 #endif
+}
+
+std::filesystem::path Utils::GetResource(const std::filesystem::path &path) {
+	return GetResourceFolder() / path;
 }
 }

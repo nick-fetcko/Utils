@@ -10,6 +10,7 @@ namespace Fetcko {
 class Utils {
 public:
 	static std::string GetStringFromFile(const std::filesystem::path &path);
+	static std::filesystem::path GetResourceFolder();
 	static std::filesystem::path GetResource(const std::filesystem::path &path);
 
 	enum class BOM {UTF_8, UTF_16_BE, UTF_16_LE};
