@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <filesystem>
 #include <functional>
 #include <iostream>
 #include <iomanip>
@@ -110,6 +111,11 @@ private:
 	template <typename T>
 	void Log(T t) const {
 		std::cout << t;
+	}
+
+	template<>
+	void Log<std::filesystem::path>(std::filesystem::path t) const {
+		std::cout << t.u8string();
 	}
 
 	template<typename T, typename... Args>
