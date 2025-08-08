@@ -65,7 +65,7 @@ public:
 		if (!processingCommands) lock.lock();
 
 		Log(Level::Info, t, args...);
-		PrintPrompt();
+		PrintPrompt(Level::Info);
 	}
 
 	template<typename T, typename... Args>
@@ -75,7 +75,7 @@ public:
 		if (!processingCommands) lock.lock();
 
 		Log(Level::Debug, t, args...);
-		PrintPrompt();
+		PrintPrompt(Level::Debug);
 	}
 
 	template<typename T, typename... Args>
@@ -85,7 +85,7 @@ public:
 		if (!processingCommands) lock.lock();
 
 		Log(Level::Warning, t, args...);
-		PrintPrompt();
+		PrintPrompt(Level::Warning);
 	}
 
 	template<typename T, typename... Args>
@@ -95,7 +95,7 @@ public:
 		if (!processingCommands) lock.lock();
 
 		Log(Level::Error, t, args...);
-		PrintPrompt();
+		PrintPrompt(Level::Error);
 	}
 
 	static void SetOnClose(std::function<void()> &&f) { onClose = f; }
@@ -181,7 +181,9 @@ private:
 		Log(args...);
 	}
 
-	void PrintPrompt() const {
+	void PrintPrompt(Level level) const {
+		if (level < logLevel) return;
+
 		std::cout << std::endl;
 
 		if (commands.empty()) return;
