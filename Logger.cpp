@@ -67,7 +67,7 @@ void Logger::ProcessCommands() {
 
 std::thread Logger::readThread = Logger::StartReadThread();
 
-Logger::Level Logger::logLevel = Logger::Level::Info;
+Logger::Level Logger::logLevel = Logger::Level::Debug;
 
 #ifdef WIN32
 const std::map<Logger::Level, Logger::WindowsConsoleColors> Logger::Colors = {
