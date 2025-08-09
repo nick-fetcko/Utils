@@ -20,6 +20,11 @@ public:
 		C chars[3];
 		in.read(chars, 3);
 
+		// If the input stream is less than 3
+		// characters long, we have to clear
+		// state.
+		in.clear();
+
 		const auto bytes = reinterpret_cast<const uint8_t *>(chars);
 
 		if (bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF) {
