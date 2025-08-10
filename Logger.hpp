@@ -177,7 +177,11 @@ private:
 
 	template<typename T, typename... Args>
 	void Log(T t, Args... args) const {
-		std::cout << t;
+		if constexpr (std::is_same<T, std::filesystem::path>::value)
+			std::cout << t.u8string();
+		else
+			std::cout << t;
+
 		Log(args...);
 	}
 
