@@ -65,6 +65,16 @@ public:
 	}
 
 	template<typename T>
+	static std::vector<std::basic_string<T>> SplitOnce(const std::basic_string<T> &s, T delimiter) {
+		if (auto pos = s.find_first_of(delimiter); pos != std::basic_string<T>::npos) {
+			return {
+				s.substr(0, pos),
+				s.substr(pos + 1)
+			};
+		} else return { s };
+	}
+
+	template<typename T>
 	static std::vector<std::basic_string<T>> Split(const std::basic_string<T> &s, int(*f)(int)) {
 		// The is...() functions (which are the expected 2nd argument)
 		// only function on ASCII chars. In MSVC, at least, an assert
