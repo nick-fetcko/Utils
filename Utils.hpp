@@ -141,6 +141,14 @@ public:
 		return digits;
 	}
 
+	template<typename T>
+	static T LittleEndian(T t) {
+		T ret = 0;
+		for (std::size_t i = 0; i < sizeof(T); ++i)
+			ret |= ((t >> ((sizeof(T) - i - 1) * 8)) & (0xFF)) << (i * 8);
+		return ret;
+	}
+
 	// From http://reedbeta.com/blog/python-like-enumerate-in-cpp17/
 	template<typename T,
 		typename TIter = decltype(std::begin(std::declval<T>())),
