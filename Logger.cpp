@@ -69,24 +69,6 @@ std::thread Logger::readThread = Logger::StartReadThread();
 
 Logger::Level Logger::logLevel = Logger::Level::Debug;
 
-#ifdef WIN32
-const std::map<Logger::Level, Logger::WindowsConsoleColors> Logger::Colors = {
-		{ Level::Info, WindowsConsoleColors::DarkCyan },
-		{ Level::Debug, WindowsConsoleColors::DarkGreen },
-		{ Level::Warning, WindowsConsoleColors::DarkYellow },
-		{ Level::Error, WindowsConsoleColors::DarkRed }
-};
-
-const HANDLE Logger::out = GetStdHandle(STD_OUTPUT_HANDLE);
-#endif
-
-const std::map<Logger::Level, std::string_view> Logger::Labels {
-		{ Level::Info,		" Info  " },
-		{ Level::Debug,		" Debug " },
-		{ Level::Warning,	"Warning" },
-		{ Level::Error,		" Error " }
-};
-
 std::function<void()> Logger::onClose;
 
 // ===============================================

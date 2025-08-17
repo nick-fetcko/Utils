@@ -222,12 +222,22 @@ private:
 		White
 	};
 
-	static const std::map<Level, WindowsConsoleColors> Colors;
+	static inline const std::map<Level, WindowsConsoleColors> Colors = {
+		{ Level::Info, WindowsConsoleColors::DarkCyan },
+		{ Level::Debug, WindowsConsoleColors::DarkGreen },
+		{ Level::Warning, WindowsConsoleColors::DarkYellow },
+		{ Level::Error, WindowsConsoleColors::DarkRed }
+	};
 
-	static const HANDLE out;
+	static inline const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
 #endif
 
-	static const std::map<Level, std::string_view> Labels;
+	static inline const std::map<Level, std::string_view> Labels = {
+		{ Level::Info,		" Info  " },
+		{ Level::Debug,		" Debug " },
+		{ Level::Warning,	"Warning" },
+		{ Level::Error,		" Error " }
+	};
 
 	LoggableClass *object = nullptr;
 
