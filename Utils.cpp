@@ -34,4 +34,13 @@ std::filesystem::path Utils::GetResourceFolder() {
 std::filesystem::path Utils::GetResource(const std::filesystem::path &path) {
 	return GetResourceFolder() / path;
 }
+
+std::vector<std::filesystem::path> Utils::GetFiles(const std::filesystem::path &path) {
+	std::vector<std::filesystem::path> ret;
+
+	for (const auto &iter : std::filesystem::directory_iterator(path))
+		ret.emplace_back(iter.path());
+
+	return ret;
+}
 }
