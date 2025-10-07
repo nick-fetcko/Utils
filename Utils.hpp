@@ -151,6 +151,43 @@ public:
 		return ret;
 	}
 
+	// https://gist.github.com/Jookia/7a9b513e6e63de9e4bc0f52da7c7ef7e
+	enum class Encoding {
+		Ascii,
+		Windows1252,
+		ShiftJis
+	};
+
+	// This DOES NOT detect UTF-8 / UTF-16 / UTF-32
+	// It's meant to be used only when Unicode fails
+	static Encoding GuessEncoding(const std::string &str, std::size_t matches = 5) {
+		std::size_t extendedAsciiChars = 0;
+		std::size_t shiftJisChars = 0;
+
+		for (std::size_t i = 0; i < str.size(); ++i) {
+			uint8_t c = str[i];
+
+			// Might be a Shift-JIS codepoint
+			if ((c >= 0x81 && c <= 0x9F) || (c >= 0xE0 && c <= 0xEF)) {
+				if (i + 1 < str.size() - 1) {
+					uint8_t next = str[i + 1];
+
+					if (next >= 0x40 && next <= 0x9E && next != 0x7F) {
+						++i; // Skip next byte
+						++shiftJisChars;
+					} else if (next >= 0x9F && next <= 0xFC) {
+						++i; // Skip next byte
+						++shiftJisChars;
+					} else ++extendedAsciiChars;
+				} else ++extendedAsciiChars;
+			} else if (c > 127) ++extendedAsciiChars;
+		}
+
+		if (shiftJisChars >= matches) return Encoding::ShiftJis;
+		else if (extendedAsciiChars >= matches) return Encoding::Windows1252;
+		else return Encoding::Ascii;
+	}
+
 	// From http://reedbeta.com/blog/python-like-enumerate-in-cpp17/
 	template<typename T,
 		typename TIter = decltype(std::begin(std::declval<T>())),
