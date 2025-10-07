@@ -12,7 +12,7 @@ std::string Utils::GetStringFromFile(const std::filesystem::path & path) {
 
 	if (!inFile) {
 		LoggableClass errorLog(typeid(Utils).name());
-		errorLog.LogError("File ", path.string(), " not found");
+		errorLog.LogError("File ", path.u8string(), " not found");
 		
 		return "";
 	}
