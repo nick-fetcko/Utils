@@ -11,10 +11,13 @@ set(_utils_headers
 	Hash.hpp
 	Utils.hpp
 	Logger.hpp
+	ShiftJIS.hpp
+	Windows1252.hpp
 	)
 set(_utils_sources
 	Utils.cpp
 	Logger.cpp
+	ShiftJIS.cpp
 	)
 
 add_library(Utils STATIC ${_utils_headers} ${_utils_sources})
