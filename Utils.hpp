@@ -188,6 +188,14 @@ public:
 		else return Encoding::Ascii;
 	}
 
+	static std::pair<bool, int> ExtractDigitsFromString(const std::string &str, bool onlyAtStart = false) {
+		const char *digits = "0123456789";
+		if (auto start = str.find_first_of(digits); (onlyAtStart && start == 0) || (!onlyAtStart && start != std::string::npos))
+			return std::make_pair(true, std::stoi(str.substr(start)));
+		else
+			return std::make_pair(false, std::numeric_limits<int>::max());
+	}
+
 	// From http://reedbeta.com/blog/python-like-enumerate-in-cpp17/
 	template<typename T,
 		typename TIter = decltype(std::begin(std::declval<T>())),
