@@ -8,19 +8,24 @@
 
 namespace Fetcko {
 std::string Utils::GetStringFromFile(const std::filesystem::path & path) {
-	std::ifstream inFile(path, std::ios_base::in | std::ios_base::binary);
+	// Derived from https://stackoverflow.com/a/525103
+	std::ifstream inFile(path, std::ios::in | std::ios::binary);
 
 	if (!inFile) {
 		LoggableClass errorLog(typeid(Utils).name());
 		errorLog.LogError("File ", path.u8string(), " not found");
-		
+
 		return "";
 	}
 
-	std::stringstream buffer;
-	buffer << inFile.rdbuf();
+	auto fileSize = std::filesystem::file_size(path);
 
-	return buffer.str();
+	if (!fileSize) return "";
+
+	std::vector<char> bytes(fileSize);
+	inFile.read(bytes.data(), fileSize);
+
+	return std::string(bytes.data(), fileSize);
 }
 
 std::filesystem::path Utils::GetResourceFolder() {
