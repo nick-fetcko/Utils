@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codecvt>
 #include <filesystem>
 #include <fstream>
 #include <optional>
@@ -9,6 +10,9 @@
 
 namespace Fetcko {
 class Utils {
+private:
+	static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> Utf8ToUtf16;
+
 public:
 	static std::string GetStringFromFile(const std::filesystem::path &path);
 	static std::filesystem::path GetResourceFolder();
@@ -194,6 +198,14 @@ public:
 			return std::make_pair(true, std::stoi(str.substr(start)));
 		else
 			return std::make_pair(false, std::numeric_limits<int>::max());
+	}
+
+	static std::wstring ToUTF16(const std::string &utf8) {
+		return Utf8ToUtf16.from_bytes(utf8);
+	}
+
+	static std::string ToUTF8(const std::wstring &utf16) {
+		return Utf8ToUtf16.to_bytes(utf16);
 	}
 
 	// From http://reedbeta.com/blog/python-like-enumerate-in-cpp17/

@@ -7,6 +7,8 @@
 #include "Logger.hpp"
 
 namespace Fetcko {
+std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> Utils::Utf8ToUtf16;
+
 std::string Utils::GetStringFromFile(const std::filesystem::path & path) {
 	// Derived from https://stackoverflow.com/a/525103
 	std::ifstream inFile(path, std::ios::in | std::ios::binary);
