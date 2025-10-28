@@ -1,5 +1,6 @@
 #include "Logger.hpp"
 
+#include <cstring>
 #include <string>
 
 #include "Utils.hpp"
@@ -67,7 +68,7 @@ void Logger::ProcessCommands() {
 
 std::thread Logger::readThread = Logger::StartReadThread();
 
-Logger::Level Logger::logLevel = Logger::Level::Debug;
+LogLevel Logger::logLevel = LogLevel::Debug;
 
 std::function<void()> Logger::onClose;
 

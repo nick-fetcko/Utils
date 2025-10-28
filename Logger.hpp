@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <functional>
@@ -26,7 +27,50 @@
 #endif
 
 namespace Fetcko {
-class LoggableClass;
+enum class LogLevel {
+	Info,
+	Debug,
+	Warning,
+	Error
+};
+class Logger;
+class LoggableClass {
+public:
+	LoggableClass();
+
+	LoggableClass(std::string &&name) :
+		LoggableClass() {
+		this->name = std::move(name);
+	}
+
+	// Make sure destructor is virtual
+	virtual ~LoggableClass();
+
+	template<typename T, typename... Args>
+	void Log(LogLevel level, T t, Args... args) const;
+
+	template<typename T, typename... Args>
+	void LogInfo(T t, Args... args) const;
+
+	template<typename T, typename... Args>
+	void LogDebug(T t, Args... args) const;
+
+	template<typename T>
+	void LogDebug(T t) const;
+
+	template<typename T, typename... Args>
+	void LogWarning(T t, Args... args) const;
+
+	template<typename T, typename... Args>
+	void LogError(T t, Args... args) const;
+
+	virtual const std::string &GetName() const { return name; }
+
+protected:
+	Logger *logger = nullptr;
+
+	std::string name;
+};
 class Logger {
 public:
 	using Command = std::function<void(const std::vector<std::string> &)>;
@@ -46,56 +90,51 @@ private:
 	static std::size_t maxClassNameWidth;
 
 public:
-	enum class Level {
-		Info,
-		Debug,
-		Warning,
-		Error
-	};
+	
 
-	static Level logLevel;
+	static LogLevel logLevel;
 
 	void SetObject(LoggableClass *object);
-	void SetLogLevel(Level logLevel) { this->logLevel = logLevel; }
+	void SetLogLevel(LogLevel logLevel) { this->logLevel = logLevel; }
 
 	template<typename T, typename... Args>
 	void LogInfo(T t, Args... args) const {
 		std::unique_lock lock(mutex, std::defer_lock);
 
-		if (!processingCommands) lock.lock();
+		if (!processingCommands.load()) lock.lock();
 
-		Log(Level::Info, t, args...);
-		PrintPrompt(Level::Info);
+		Log(LogLevel::Info, t, args...);
+		PrintPrompt(LogLevel::Info);
 	}
 
 	template<typename T, typename... Args>
 	void LogDebug(T t, Args... args) const {
 		std::unique_lock lock(mutex, std::defer_lock);
 
-		if (!processingCommands) lock.lock();
+		if (!processingCommands.load()) lock.lock();
 
-		Log(Level::Debug, t, args...);
-		PrintPrompt(Level::Debug);
+		Log(LogLevel::Debug, t, args...);
+		PrintPrompt(LogLevel::Debug);
 	}
 
 	template<typename T, typename... Args>
 	void LogWarning(T t, Args... args) const {
 		std::unique_lock lock(mutex, std::defer_lock);
 
-		if (!processingCommands) lock.lock();
+		if (!processingCommands.load()) lock.lock();
 
-		Log(Level::Warning, t, args...);
-		PrintPrompt(Level::Warning);
+		Log(LogLevel::Warning, t, args...);
+		PrintPrompt(LogLevel::Warning);
 	}
 
 	template<typename T, typename... Args>
 	void LogError(T t, Args... args) const {
 		std::unique_lock lock(mutex, std::defer_lock);
 
-		if (!processingCommands) lock.lock();
+		if (!processingCommands.load()) lock.lock();
 
-		Log(Level::Error, t, args...);
-		PrintPrompt(Level::Error);
+		Log(LogLevel::Error, t, args...);
+		PrintPrompt(LogLevel::Error);
 	}
 
 	static void SetOnClose(std::function<void()> &&f) { onClose = f; }
@@ -113,13 +152,12 @@ private:
 		std::cout << t;
 	}
 
-	template<>
-	void Log<std::filesystem::path>(std::filesystem::path t) const {
+	template<> void Log<std::filesystem::path>(std::filesystem::path t) const {
 		std::cout << t.u8string();
 	}
 
 	template<typename T, typename... Args>
-	void Log(Level level, T t, Args... args) const {
+	void Log(LogLevel level, T t, Args... args) const {
 		if (level >= logLevel) {
 			Log(level, t);
 			Log(args...);
@@ -127,7 +165,7 @@ private:
 	}
 
 	template<typename T>
-	void Log(Level level, T t) const {
+	void Log(LogLevel level, T t) const {
 		if (level >= logLevel) {
 #ifdef WIN32
 			SetConsoleTextAttribute(
@@ -185,7 +223,7 @@ private:
 		Log(args...);
 	}
 
-	void PrintPrompt(Level level) const {
+	void PrintPrompt(LogLevel level) const {
 		if (level < logLevel) return;
 
 		std::cout << std::endl;
@@ -222,21 +260,21 @@ private:
 		White
 	};
 
-	static inline const std::map<Level, WindowsConsoleColors> Colors = {
-		{ Level::Info, WindowsConsoleColors::DarkCyan },
-		{ Level::Debug, WindowsConsoleColors::DarkGreen },
-		{ Level::Warning, WindowsConsoleColors::DarkYellow },
-		{ Level::Error, WindowsConsoleColors::DarkRed }
+	static inline const std::map<LogLevel, WindowsConsoleColors> Colors = {
+		{ LogLevel::Info, WindowsConsoleColors::DarkCyan },
+		{ LogLevel::Debug, WindowsConsoleColors::DarkGreen },
+		{ LogLevel::Warning, WindowsConsoleColors::DarkYellow },
+		{ LogLevel::Error, WindowsConsoleColors::DarkRed }
 	};
 
 	static inline const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
 #endif
 
-	static inline const std::map<Level, std::string_view> Labels = {
-		{ Level::Info,		" Info  " },
-		{ Level::Debug,		" Debug " },
-		{ Level::Warning,	"Warning" },
-		{ Level::Error,		" Error " }
+	static inline const std::map<LogLevel, std::string_view> Labels = {
+		{ LogLevel::Info,		" Info  " },
+		{ LogLevel::Debug,		" Debug " },
+		{ LogLevel::Warning,	"Warning" },
+		{ LogLevel::Error,		" Error " }
 	};
 
 	LoggableClass *object = nullptr;
@@ -244,52 +282,44 @@ private:
 	static std::function<void()> onClose;
 };
 
-class LoggableClass {
-public:
-	LoggableClass() {
-		logger.SetObject(this);
-	}
+inline LoggableClass::LoggableClass() {
+	logger = new Logger();
+	logger->SetObject(this);
+}
 
-	LoggableClass(std::string &&name) :
-		LoggableClass() {
-		this->name = std::move(name);
-	}
+inline LoggableClass::~LoggableClass() {
+	delete logger;
+}
 
-	// Make sure destructor is virtual
-	virtual ~LoggableClass() = default;
+template<typename T, typename... Args>
+inline void LoggableClass::Log(LogLevel level, T t, Args... args) const {
+	logger->Log(level, t, args...);
+}
 
-	template<typename T, typename... Args>
-	void Log(Logger::Level level, T t, Args... args) {
-		logger.Log(level, t, args...);
-	}
+template<typename T, typename... Args>
+inline void LoggableClass::LogInfo(T t, Args... args) const {
+	logger->LogInfo(t, args...);
+}
 
-	template<typename T, typename... Args>
-	void LogInfo(T t, Args... args) {
-		logger.LogInfo(t, args...);
-	}
+template<typename T, typename... Args>
+inline void LoggableClass::LogDebug(T t, Args... args) const {
+	logger->LogDebug(t, args...);
+}
 
-	template<typename T, typename... Args>
-	void LogDebug(T t, Args... args) {
-		logger.LogDebug(t, args...);
-	}
+template<typename T>
+inline void LoggableClass::LogDebug(T t) const {
+	logger->LogDebug(t);
+}
 
-	template<typename T, typename... Args>
-	void LogWarning(T t, Args... args) {
-		logger.LogWarning(t, args...);
-	}
+template<typename T, typename... Args>
+inline void LoggableClass::LogWarning(T t, Args... args) const {
+	logger->LogWarning(t, args...);
+}
 
-	template<typename T, typename... Args>
-	void LogError(T t, Args... args) {
-		logger.LogError(t, args...);
-	}
-
-	virtual const std::string &GetName() const { return name; }
-
-protected:
-	Logger logger;
-
-	std::string name;
-};
+template<typename T, typename... Args>
+inline void LoggableClass::LogError(T t, Args... args) const {
+	logger->LogError(t, args...);
+}
 
 class LoggableThread : public std::thread, public LoggableClass {
 public:

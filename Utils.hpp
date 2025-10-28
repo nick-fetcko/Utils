@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <codecvt>
 #include <filesystem>
 #include <fstream>
@@ -11,7 +12,8 @@
 namespace Fetcko {
 class Utils {
 private:
-	static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> Utf8ToUtf16;
+	static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> Utf8ToUtf16Wide;
+	static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> Utf8ToUtf16;
 
 public:
 	static std::string GetStringFromFile(const std::filesystem::path &path);
@@ -39,12 +41,16 @@ public:
 		} else if (bytes[0] == 0xFE && bytes[1] == 0xFF) {
 			if constexpr (std::is_same<C, wchar_t>::value)
 				in.seekg(1);
+			else if constexpr (std::is_same<C, char16_t>::value)
+				in.seekg(1);
 			else
 				in.seekg(-1, std::ios::cur);
 
 			return BOM::UTF_16_BE;
 		} else if (bytes[0] == 0xFF && bytes[1] == 0xFE) {
 			if constexpr (std::is_same<C, wchar_t>::value)
+				in.seekg(1);
+			else if constexpr (std::is_same<C, char16_t>::value)
 				in.seekg(1);
 			else
 				in.seekg(-1, std::ios::cur);
@@ -201,10 +207,14 @@ public:
 	}
 
 	static std::wstring ToUTF16(const std::string &utf8) {
-		return Utf8ToUtf16.from_bytes(utf8);
+		return Utf8ToUtf16Wide.from_bytes(utf8);
 	}
 
 	static std::string ToUTF8(const std::wstring &utf16) {
+		return Utf8ToUtf16Wide.to_bytes(utf16);
+	}
+
+	static std::string ToUTF8(const std::u16string &utf16) {
 		return Utf8ToUtf16.to_bytes(utf16);
 	}
 
