@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <codecvt>
 #include <filesystem>
 #include <fstream>
@@ -216,6 +217,29 @@ public:
 
 	static std::string ToUTF8(const std::u16string &utf16) {
 		return Utf8ToUtf16.to_bytes(utf16);
+	}
+
+	static std::string GetFriendlyBytes(const std::size_t bytes) {
+		constexpr std::array<std::string_view, 6> Suffixes = {
+			"B",
+			"KB",
+			"MB",
+			"GB",
+			"TB",
+			"PB"
+		};
+
+		double div = bytes;
+		std::size_t index = 0;
+		while (div >= 1024.0 && index < Suffixes.size() - 1) {
+			++index;
+			div /= 1024.0;
+		}
+
+		std::stringstream stream;
+		stream << std::fixed << std::setprecision(2) << div << " " << Suffixes[index];
+
+		return stream.str();
 	}
 
 	// From http://reedbeta.com/blog/python-like-enumerate-in-cpp17/
