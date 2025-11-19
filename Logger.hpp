@@ -152,10 +152,6 @@ private:
 		std::cout << t;
 	}
 
-	template<> void Log<std::filesystem::path>(std::filesystem::path t) const {
-		std::cout << t.u8string();
-	}
-
 	template<typename T, typename... Args>
 	void Log(LogLevel level, T t, Args... args) const {
 		if (level >= logLevel) {
@@ -319,6 +315,11 @@ inline void LoggableClass::LogWarning(T t, Args... args) const {
 template<typename T, typename... Args>
 inline void LoggableClass::LogError(T t, Args... args) const {
 	logger->LogError(t, args...);
+}
+
+template<> 
+inline void Logger::Log<std::filesystem::path>(std::filesystem::path t) const {
+	std::cout << t.u8string();
 }
 
 class LoggableThread : public std::thread, public LoggableClass {
