@@ -16,8 +16,11 @@ private:
 	static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> Utf8ToUtf16Wide;
 	static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> Utf8ToUtf16;
 
+	static std::filesystem::path ResourceFolder;
+
 public:
 	static std::string GetStringFromFile(const std::filesystem::path &path);
+	static void SetResourceFolder(const std::filesystem::path &path);
 	static std::filesystem::path GetResourceFolder();
 	static std::filesystem::path GetResource(const std::filesystem::path &path);
 	static std::vector<std::filesystem::path> GetFiles(const std::filesystem::path &path);

@@ -9,6 +9,7 @@
 namespace Fetcko {
 std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> Utils::Utf8ToUtf16Wide;
 std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> Utils::Utf8ToUtf16;
+std::filesystem::path Utils::ResourceFolder;
 
 std::string Utils::GetStringFromFile(const std::filesystem::path & path) {
 	// Derived from https://stackoverflow.com/a/525103
@@ -31,11 +32,15 @@ std::string Utils::GetStringFromFile(const std::filesystem::path & path) {
 	return std::string(bytes.data(), fileSize);
 }
 
+void Utils::SetResourceFolder(const std::filesystem::path &path) {
+	ResourceFolder = path;
+}
+
 std::filesystem::path Utils::GetResourceFolder() {
 #ifdef _DEBUG
-	return std::filesystem::path("..") / ".." / "Data";
+	return std::filesystem::path("..") / "Data";
 #else
-	return std::filesystem::path(".") / "Data";
+	return (ResourceFolder.empty() ? std::filesystem::path(".") : ResourceFolder) / "Data";
 #endif
 }
 
