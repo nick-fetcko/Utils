@@ -37,10 +37,14 @@ void Utils::SetResourceFolder(const std::filesystem::path &path) {
 }
 
 std::filesystem::path Utils::GetResourceFolder() {
+#ifdef __ANDROID__
+	return ResourceFolder;
+#else
 #ifdef _DEBUG
 	return std::filesystem::path("..") / ".." / "Data";
 #else
 	return (ResourceFolder.empty() ? std::filesystem::path(".") : ResourceFolder) / "Data";
+#endif
 #endif
 }
 

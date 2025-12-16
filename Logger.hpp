@@ -13,6 +13,10 @@
 #include <string_view>
 #include <thread>
 
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+
 #ifdef WIN32
 	#ifndef WIN32_LEAN_AND_MEAN
 		#define WIN32_LEAN_AND_MEAN
@@ -79,6 +83,8 @@ public:
 	static void ProcessCommands();
 
 private:
+	static std::string appName;
+
 	static std::thread StartReadThread();
 	static std::thread readThread;
 	static std::map<std::string, Command> commands;
@@ -90,15 +96,19 @@ private:
 	static std::size_t maxClassNameWidth;
 
 public:
-	
-
 	static LogLevel logLevel;
+
+	static void SetAppName(const std::string &appName) { Logger::appName = appName; }
 
 	void SetObject(LoggableClass *object);
 	void SetLogLevel(LogLevel logLevel) { this->logLevel = logLevel; }
 
 	template<typename T, typename... Args>
-	void LogInfo(T t, Args... args) const {
+	void LogInfo(T t, Args... args)
+#ifndef __ANDROID__
+	const
+#endif
+	{
 		std::unique_lock lock(mutex, std::defer_lock);
 
 		if (!processingCommands.load()) lock.lock();
@@ -108,7 +118,11 @@ public:
 	}
 
 	template<typename T, typename... Args>
-	void LogDebug(T t, Args... args) const {
+	void LogDebug(T t, Args... args)
+#ifndef __ANDROID__
+	const
+#endif
+	{
 		std::unique_lock lock(mutex, std::defer_lock);
 
 		if (!processingCommands.load()) lock.lock();
@@ -118,7 +132,11 @@ public:
 	}
 
 	template<typename T, typename... Args>
-	void LogWarning(T t, Args... args) const {
+	void LogWarning(T t, Args... args)
+#ifndef __ANDROID__
+	const
+#endif
+	{
 		std::unique_lock lock(mutex, std::defer_lock);
 
 		if (!processingCommands.load()) lock.lock();
@@ -128,7 +146,11 @@ public:
 	}
 
 	template<typename T, typename... Args>
-	void LogError(T t, Args... args) const {
+	void LogError(T t, Args... args)
+#ifndef __ANDROID__
+	const
+#endif
+	{
 		std::unique_lock lock(mutex, std::defer_lock);
 
 		if (!processingCommands.load()) lock.lock();
@@ -148,12 +170,24 @@ public:
 
 private:
 	template <typename T>
-	void Log(T t) const {
+	void Log(T t)
+#ifndef __ANDROID__
+	const
+#endif
+	{
+#ifndef __ANDROID__
 		std::cout << t;
+#else
+		stream << t;
+#endif
 	}
 
 	template<typename T, typename... Args>
-	void Log(LogLevel level, T t, Args... args) const {
+	void Log(LogLevel level, T t, Args... args)
+#ifndef __ANDROID__
+	const
+#endif
+	{
 		if (level >= logLevel) {
 			Log(level, t);
 			Log(args...);
@@ -161,7 +195,11 @@ private:
 	}
 
 	template<typename T>
-	void Log(LogLevel level, T t) const {
+	void Log(LogLevel level, T t)
+#ifndef __ANDROID__
+	const
+#endif
+	{
 		if (level >= logLevel) {
 #ifdef WIN32
 			SetConsoleTextAttribute(
@@ -176,8 +214,13 @@ private:
 
 			const auto &name = object->GetName();
 
+#ifndef __ANDROID__
 			std::cout
-				<< "\r["
+				<< "\r"
+#else
+			stream
+#endif
+				<< "["
 				<< Labels.at(level)
 				<< "] ("
 				<< std::put_time(std::localtime(&time), "%d%b%Y %H:%M:%S")
@@ -188,7 +231,11 @@ private:
 				<< typeid(*object).name();
 
 			if (name.size()) {
+#ifndef __ANDROID__
 				std::cout
+#else
+				stream
+#endif
 					<< " ("
 					<< name
 					<< ")";
@@ -199,7 +246,11 @@ private:
 			auto address = addressStream.str();
 			address.erase(0, address.find_first_not_of('0'));
 
+#ifndef __ANDROID__
 			std::cout
+#else
+			stream
+#endif
 				<< " [0x"
 				<< std::hex
 				<< address
@@ -210,19 +261,67 @@ private:
 	}
 
 	template<typename T, typename... Args>
-	void Log(T t, Args... args) const {
+	void Log(T t, Args... args)
+#ifndef __ANDROID__
+	const
+#endif
+	{
 		if constexpr (std::is_same<T, std::filesystem::path>::value)
+#ifndef __ANDROID__
 			std::cout << t.u8string();
+#else
+			stream << t.u8string();
+#endif
 		else
+#ifndef __ANDROID__
 			std::cout << t;
+#else
+			stream << t;
+#endif
 
 		Log(args...);
 	}
 
-	void PrintPrompt(LogLevel level) const {
-		if (level < logLevel) return;
+	void PrintPrompt(LogLevel level)
+	// Can't be const on Android because
+	// we need to reset the stream.
+#ifndef __ANDROID__
+	const
+#endif
+	{
+		if (level < logLevel) {
+#ifdef __ANDROID__
+			stream.str("");
+#endif
+			return;
+		}
 
+#ifndef __ANDROID__
 		std::cout << std::endl;
+#else
+		int priority = ANDROID_LOG_UNKNOWN;
+
+		switch(level) {
+			case LogLevel::Info:
+				priority = ANDROID_LOG_INFO;
+				break;
+			case LogLevel::Debug:
+				priority = ANDROID_LOG_DEBUG;
+				break;
+			case LogLevel::Warning:
+				priority = ANDROID_LOG_WARN;
+				break;
+			case LogLevel::Error:
+				priority = ANDROID_LOG_ERROR;
+				break;
+			default:
+				priority = ANDROID_LOG_UNKNOWN;
+				break;
+		}
+
+		__android_log_print(priority, appName.c_str(), "%s\n", stream.str().c_str());
+		stream.str("");
+#endif
 
 		if (commands.empty()) return;
 
@@ -275,6 +374,10 @@ private:
 
 	LoggableClass *object = nullptr;
 
+#ifdef __ANDROID__
+	std::stringstream stream;
+#endif
+
 	static std::function<void()> onClose;
 };
 
@@ -318,8 +421,16 @@ inline void LoggableClass::LogError(T t, Args... args) const {
 }
 
 template<> 
-inline void Logger::Log<std::filesystem::path>(std::filesystem::path t) const {
+inline void Logger::Log<std::filesystem::path>(std::filesystem::path t)
+#ifndef __ANDROID__
+const
+#endif
+{
+#ifndef __ANDROID__
 	std::cout << t.u8string();
+#else
+	stream << t.u8string();
+#endif
 }
 
 class LoggableThread : public std::thread, public LoggableClass {

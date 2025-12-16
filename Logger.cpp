@@ -21,6 +21,7 @@ namespace Fetcko {
 // ===============================================
 // =========== Initializing Statics ==============
 // ===============================================
+std::string Logger::appName;
 std::mutex Logger::mutex;
 std::map<std::string, Logger::Command> Logger::commands;
 std::queue<std::pair<Logger::Command, std::vector<std::string>>> Logger::commandQueue;
@@ -80,7 +81,7 @@ void Logger::AddCommands(std::map<std::string, Command> &&commands) {
 
 	// When we first add commands, initialize a console window
 	if (Logger::commands.empty() && !commands.empty()) {
-#ifdef WIN32
+#if defined(WIN32) && defined(DEBUG)
 		AllocConsole();
 		AttachConsole(ATTACH_PARENT_PROCESS);
 
