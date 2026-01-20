@@ -17,6 +17,8 @@
 #include <android/log.h>
 #endif
 
+#include "Filesystem.hpp"
+
 #ifdef WIN32
 	#ifndef WIN32_LEAN_AND_MEAN
 		#define WIN32_LEAN_AND_MEAN
@@ -83,8 +85,6 @@ public:
 	static void ProcessCommands();
 
 private:
-	static std::string appName;
-
 	static std::thread StartReadThread();
 	static std::thread readThread;
 	static std::map<std::string, Command> commands;
@@ -97,8 +97,6 @@ private:
 
 public:
 	static LogLevel logLevel;
-
-	static void SetAppName(const std::string &appName) { Logger::appName = appName; }
 
 	void SetObject(LoggableClass *object);
 	void SetLogLevel(LogLevel logLevel) { this->logLevel = logLevel; }
@@ -319,7 +317,7 @@ private:
 				break;
 		}
 
-		__android_log_print(priority, appName.c_str(), "%s\n", stream.str().c_str());
+		__android_log_print(priority, Filesystem::GetAppName().c_str(), "%s\n", stream.str().c_str());
 		stream.str("");
 #endif
 
