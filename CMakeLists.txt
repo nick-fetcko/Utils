@@ -16,6 +16,7 @@ set(_utils_headers
 	Windows1252.hpp
 	)
 set(_utils_sources
+	Filesystem.cpp
 	Utils.cpp
 	Logger.cpp
 	ShiftJIS.cpp

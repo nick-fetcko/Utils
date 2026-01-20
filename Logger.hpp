@@ -3,6 +3,7 @@
 #include <atomic>
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <iomanip>
@@ -78,6 +79,9 @@ protected:
 	std::string name;
 };
 class Logger {
+#ifdef __ANDROID__
+friend class Filesystem;
+#endif
 public:
 	using Command = std::function<void(const std::vector<std::string> &)>;
 
@@ -85,6 +89,9 @@ public:
 	static void ProcessCommands();
 
 private:
+	constexpr inline static uint8_t MaxFiles = 5;
+	constexpr inline static std::size_t MaxFileSize = 1024 * 1024; // 1MB
+
 	static std::thread StartReadThread();
 	static std::thread readThread;
 	static std::map<std::string, Command> commands;
@@ -102,11 +109,7 @@ public:
 	void SetLogLevel(LogLevel logLevel) { this->logLevel = logLevel; }
 
 	template<typename T, typename... Args>
-	void LogInfo(T t, Args... args)
-#ifndef __ANDROID__
-	const
-#endif
-	{
+	void LogInfo(T t, Args... args) {
 		std::unique_lock lock(mutex, std::defer_lock);
 
 		if (!processingCommands.load()) lock.lock();
@@ -116,11 +119,7 @@ public:
 	}
 
 	template<typename T, typename... Args>
-	void LogDebug(T t, Args... args)
-#ifndef __ANDROID__
-	const
-#endif
-	{
+	void LogDebug(T t, Args... args) {
 		std::unique_lock lock(mutex, std::defer_lock);
 
 		if (!processingCommands.load()) lock.lock();
@@ -130,11 +129,7 @@ public:
 	}
 
 	template<typename T, typename... Args>
-	void LogWarning(T t, Args... args)
-#ifndef __ANDROID__
-	const
-#endif
-	{
+	void LogWarning(T t, Args... args) {
 		std::unique_lock lock(mutex, std::defer_lock);
 
 		if (!processingCommands.load()) lock.lock();
@@ -144,11 +139,7 @@ public:
 	}
 
 	template<typename T, typename... Args>
-	void LogError(T t, Args... args)
-#ifndef __ANDROID__
-	const
-#endif
-	{
+	void LogError(T t, Args... args) {
 		std::unique_lock lock(mutex, std::defer_lock);
 
 		if (!processingCommands.load()) lock.lock();
@@ -167,24 +158,16 @@ public:
 	}
 
 private:
+	static std::ofstream OpenFile();
+	static std::ofstream OpenNextFile();
+
 	template <typename T>
-	void Log(T t)
-#ifndef __ANDROID__
-	const
-#endif
-	{
-#ifndef __ANDROID__
-		std::cout << t;
-#else
+	void Log(T t) {
 		stream << t;
-#endif
 	}
 
 	template<typename T, typename... Args>
 	void Log(LogLevel level, T t, Args... args)
-#ifndef __ANDROID__
-	const
-#endif
 	{
 		if (level >= logLevel) {
 			Log(level, t);
@@ -194,9 +177,6 @@ private:
 
 	template<typename T>
 	void Log(LogLevel level, T t)
-#ifndef __ANDROID__
-	const
-#endif
 	{
 		if (level >= logLevel) {
 #ifdef WIN32
@@ -211,12 +191,10 @@ private:
 			);
 
 			const auto &name = object->GetName();
-
-#ifndef __ANDROID__
-			std::cout
-				<< "\r"
-#else
+	
 			stream
+#ifndef __ANDROID__
+				<< "\r"
 #endif
 				<< "["
 				<< Labels.at(level)
@@ -229,11 +207,7 @@ private:
 				<< typeid(*object).name();
 
 			if (name.size()) {
-#ifndef __ANDROID__
-				std::cout
-#else
 				stream
-#endif
 					<< " ("
 					<< name
 					<< ")";
@@ -244,11 +218,7 @@ private:
 			auto address = addressStream.str();
 			address.erase(0, address.find_first_not_of('0'));
 
-#ifndef __ANDROID__
-			std::cout
-#else
 			stream
-#endif
 				<< " [0x"
 				<< std::hex
 				<< address
@@ -260,22 +230,11 @@ private:
 
 	template<typename T, typename... Args>
 	void Log(T t, Args... args)
-#ifndef __ANDROID__
-	const
-#endif
 	{
 		if constexpr (std::is_same<T, std::filesystem::path>::value)
-#ifndef __ANDROID__
-			std::cout << t.u8string();
-#else
 			stream << t.u8string();
-#endif
 		else
-#ifndef __ANDROID__
-			std::cout << t;
-#else
 			stream << t;
-#endif
 
 		Log(args...);
 	}
@@ -283,19 +242,14 @@ private:
 	void PrintPrompt(LogLevel level)
 	// Can't be const on Android because
 	// we need to reset the stream.
-#ifndef __ANDROID__
-	const
-#endif
 	{
 		if (level < logLevel) {
-#ifdef __ANDROID__
 			stream.str("");
-#endif
 			return;
 		}
 
 #ifndef __ANDROID__
-		std::cout << std::endl;
+		std::cout << stream.str() << std::endl;
 #else
 		int priority = ANDROID_LOG_UNKNOWN;
 
@@ -318,8 +272,23 @@ private:
 		}
 
 		__android_log_print(priority, Filesystem::GetAppName().c_str(), "%s\n", stream.str().c_str());
-		stream.str("");
 #endif
+
+		// If we've exceeded the max file size,
+		// open the next log file
+		if (file.tellp() > MaxFileSize)
+			file = OpenNextFile();
+
+		file << 
+#ifndef __ANDROID__
+			// Remove leading carriage return
+			stream.str().substr(1)
+#else
+			stream.str() 
+#endif
+			<< std::endl;
+
+		stream.str("");
 
 		if (commands.empty()) return;
 
@@ -372,9 +341,10 @@ private:
 
 	LoggableClass *object = nullptr;
 
-#ifdef __ANDROID__
 	std::stringstream stream;
-#endif
+
+	static std::ofstream file;
+	static uint8_t fileIndex;
 
 	static std::function<void()> onClose;
 };
@@ -419,16 +389,8 @@ inline void LoggableClass::LogError(T t, Args... args) const {
 }
 
 template<> 
-inline void Logger::Log<std::filesystem::path>(std::filesystem::path t)
-#ifndef __ANDROID__
-const
-#endif
-{
-#ifndef __ANDROID__
-	std::cout << t.u8string();
-#else
+inline void Logger::Log<std::filesystem::path>(std::filesystem::path t) {
 	stream << t.u8string();
-#endif
 }
 
 class LoggableThread : public std::thread, public LoggableClass {

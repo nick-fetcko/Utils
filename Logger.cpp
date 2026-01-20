@@ -24,6 +24,12 @@ namespace Fetcko {
 std::mutex Logger::mutex;
 std::map<std::string, Logger::Command> Logger::commands;
 std::queue<std::pair<Logger::Command, std::vector<std::string>>> Logger::commandQueue;
+uint8_t Logger::fileIndex = 1;
+#ifndef __ANDROID__
+std::ofstream Logger::file = Logger::OpenFile();
+#else
+std::ofstream Logger::file;
+#endif
 
 std::size_t Logger::maxClassNameWidth = 0;
 
@@ -101,5 +107,52 @@ void Logger::SetObject(LoggableClass *object) {
 
 	if (auto width = std::strlen(typeid(*object).name()); width > maxClassNameWidth)
 		maxClassNameWidth = width;
+}
+
+std::ofstream Logger::OpenFile() {
+	const auto path = Filesystem::GetPath("log");
+
+	if (!std::filesystem::exists(path))
+		std::filesystem::create_directory(path);
+
+	uint8_t index = 1;
+	for (; index <= MaxFiles; ++index) {
+		if (!std::filesystem::exists(path / (std::to_string(index) + ".log"))) {
+			// If we have no files yet, create our first
+			if (index != 1)
+				--index;
+
+			// If we've not hit the max number of files,
+			// use the last existing one
+			break;
+		}
+	}
+
+	// If we've reached the maximum number of log files,
+	// find the one that was written to _last_
+	auto lastWriteTime = std::filesystem::file_time_type();
+	uint8_t lastWriteIndex = index;
+	if (index > MaxFiles) {
+		for (index = 1; index <= MaxFiles; ++index) {
+			if (auto writeTime = std::filesystem::last_write_time(path / (std::to_string(index) + ".log")); writeTime > lastWriteTime) {
+				lastWriteIndex = index;
+				lastWriteTime = writeTime;
+			}
+		}
+	}
+
+	fileIndex = lastWriteIndex;
+
+	return std::ofstream(path / (std::to_string(fileIndex) + ".log"), std::ios::out | std::ios::app);
+}
+
+std::ofstream Logger::OpenNextFile() {
+	const auto path = Filesystem::GetPath("log");
+
+	// Roll around to 1 once we've hit the max
+	if ((++fileIndex) > MaxFiles)
+		fileIndex = 1;
+
+	return std::ofstream(path / (std::to_string(fileIndex) + ".log"), std::ios::out); // No append; new file
 }
 }
