@@ -2,15 +2,25 @@
 
 #include <cstring>
 #include <string>
+#include <thread>
 
 #include "Utils.hpp"
+
+using namespace std::chrono_literals;
 
 #ifdef WIN32
 // https://discourse.libsdl.org/t/detect-console-window-close-windows/20557/4
 BOOL WINAPI ConsoleHandlerRoutine(DWORD dwCtrlType) {
 	if (dwCtrlType == CTRL_CLOSE_EVENT) {
-		if (auto onClose = Fetcko::Logger::GetOnClose(); onClose)
+		if (auto onClose = Fetcko::Logger::GetOnClose(); onClose) {
 			onClose();
+
+			if (auto isClosed = Fetcko::Logger::GetIsClosed(); isClosed) {
+				while (!isClosed())
+					std::this_thread::sleep_for(1ms);
+			}
+		}
+
 		return true;
 	}
 	return false;
@@ -33,6 +43,7 @@ std::ofstream Logger::file;
 
 std::size_t Logger::maxClassNameWidth = 0;
 
+#ifdef _DEBUG
 std::thread Logger::StartReadThread() {
 	std::thread ret { [] {
 		std::string line;
@@ -57,6 +68,9 @@ std::thread Logger::StartReadThread() {
 	return ret;
 }
 
+std::thread Logger::readThread = Logger::StartReadThread();
+#endif
+
 std::atomic<bool> Logger::processingCommands = false;
 
 void Logger::ProcessCommands() {
@@ -72,11 +86,10 @@ void Logger::ProcessCommands() {
 	processingCommands = false;
 }
 
-std::thread Logger::readThread = Logger::StartReadThread();
-
 LogLevel Logger::logLevel = LogLevel::Debug;
 
 std::function<void()> Logger::onClose;
+std::function<bool()> Logger::isClosed;
 
 // ===============================================
 // ============= Member Functions ================
@@ -86,7 +99,7 @@ void Logger::AddCommands(std::map<std::string, Command> &&commands) {
 
 	// When we first add commands, initialize a console window
 	if (Logger::commands.empty() && !commands.empty()) {
-#if defined(WIN32) && defined(DEBUG)
+#if defined(WIN32) && defined(_DEBUG)
 		AllocConsole();
 		AttachConsole(ATTACH_PARENT_PROCESS);
 

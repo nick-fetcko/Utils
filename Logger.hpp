@@ -45,6 +45,12 @@ class LoggableClass {
 public:
 	LoggableClass();
 
+	LoggableClass(LoggableClass &&other) noexcept {
+		name = std::move(other.name);
+		logger = other.logger;
+		other.logger = nullptr;
+	}
+
 	LoggableClass(std::string &&name) :
 		LoggableClass() {
 		this->name = std::move(name);
@@ -73,6 +79,8 @@ public:
 
 	virtual const std::string &GetName() const { return name; }
 
+	LoggableClass &operator=(const LoggableClass &) = default;
+
 protected:
 	Logger *logger = nullptr;
 
@@ -92,8 +100,10 @@ private:
 	constexpr inline static uint8_t MaxFiles = 5;
 	constexpr inline static std::size_t MaxFileSize = 1024 * 1024; // 1MB
 
+#ifdef _DEBUG
 	static std::thread StartReadThread();
 	static std::thread readThread;
+#endif
 	static std::map<std::string, Command> commands;
 	static std::queue<std::pair<Command, std::vector<std::string>>> commandQueue;
 
@@ -150,6 +160,9 @@ public:
 
 	static void SetOnClose(std::function<void()> &&f) { onClose = f; }
 	static const std::function<void()> &GetOnClose() { return onClose; }
+
+	static void SetIsClosed(std::function<bool()> &&f) { isClosed = f; }
+	static const std::function<bool()> &GetIsClosed() { return isClosed; }
 
 	static void OnDestroy() {
 #ifdef WIN32
@@ -276,18 +289,20 @@ private:
 
 		// If we've exceeded the max file size,
 		// open the next log file
-		if (file.tellp() > MaxFileSize)
-			file = OpenNextFile();
+		if (file.is_open()) {
+			if (file.tellp() > MaxFileSize)
+				file = OpenNextFile();
 
-		file << 
+			file <<
 #ifndef __ANDROID__
-			// Remove leading carriage return
-			stream.str().substr(1)
+				// Remove leading carriage return
+				stream.str().substr(1)
 #else
-			stream.str() 
+				stream.str()
 #endif
-			<< std::endl;
+				<< std::endl;
 
+		}
 		stream.str("");
 
 		if (commands.empty()) return;
@@ -347,6 +362,7 @@ private:
 	static uint8_t fileIndex;
 
 	static std::function<void()> onClose;
+	static std::function<bool()> isClosed;
 };
 
 inline LoggableClass::LoggableClass() {
