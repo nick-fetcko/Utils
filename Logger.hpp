@@ -33,6 +33,8 @@
 	#undef max
 #endif
 
+#define MULTITHREADED_LOGGING 1
+
 namespace Fetcko {
 enum class LogLevel {
 	Info,
@@ -100,7 +102,7 @@ private:
 	constexpr inline static uint8_t MaxFiles = 5;
 	constexpr inline static std::size_t MaxFileSize = 1024 * 1024; // 1MB
 
-#ifdef _DEBUG
+#if defined(_DEBUG) && !MULTITHREADED_LOGGING
 	static std::thread StartReadThread();
 	static std::thread readThread;
 #endif
@@ -112,11 +114,19 @@ private:
 
 	static std::size_t maxClassNameWidth;
 
+#if MULTITHREADED_LOGGING
+	static std::thread StartWriteThread();
+#endif
+
 public:
 	static LogLevel logLevel;
 
+#if MULTITHREADED_LOGGING
+	~Logger();
+#endif
+
 	void SetObject(LoggableClass *object);
-	void SetLogLevel(LogLevel logLevel) { this->logLevel = logLevel; }
+	void SetLogLevel(LogLevel logLevel) { Logger::logLevel = logLevel; }
 
 	template<typename T, typename... Args>
 	void LogInfo(T t, Args... args) {
@@ -193,10 +203,12 @@ private:
 	{
 		if (level >= logLevel) {
 #ifdef WIN32
+#if !MULTITHREADED_LOGGING
 			SetConsoleTextAttribute(
 				out,
 				static_cast<WORD>(Colors.at(level))
 			);
+#endif
 #endif
 
 			const auto time = std::chrono::system_clock::to_time_t(
@@ -262,7 +274,14 @@ private:
 		}
 
 #ifndef __ANDROID__
+#if MULTITHREADED_LOGGING
+		{
+			std::unique_lock lock(queueMutex);
+			messageQueue.emplace(std::make_pair(level, stream.str()));
+		}
+#else
 		std::cout << stream.str() << std::endl;
+#endif
 #else
 		int priority = ANDROID_LOG_UNKNOWN;
 
@@ -287,6 +306,7 @@ private:
 		__android_log_print(priority, Filesystem::GetAppName().c_str(), "%s\n", stream.str().c_str());
 #endif
 
+#if !MULTITHREADED_LOGGING
 		// If we've exceeded the max file size,
 		// open the next log file
 		if (file.is_open()) {
@@ -303,18 +323,23 @@ private:
 				<< std::endl;
 
 		}
+#endif
 		stream.str("");
 
 		if (commands.empty()) return;
 
 #ifdef WIN32
+#if !MULTITHREADED_LOGGING
 		SetConsoleTextAttribute(
 			out,
 			static_cast<WORD>(WindowsConsoleColors::Default)
 		);
 #endif
+#endif
 
+#if !MULTITHREADED_LOGGING
 		std::cout << " > ";
+#endif
 	}
 
 #ifdef WIN32
@@ -363,6 +388,14 @@ private:
 
 	static std::function<void()> onClose;
 	static std::function<bool()> isClosed;
+
+#if MULTITHREADED_LOGGING
+	static std::queue<std::pair<LogLevel, std::string>> messageQueue;
+	static std::mutex queueMutex;
+	static std::thread writeThread;
+	static Logger globalLogger;
+	static bool writing;
+#endif
 };
 
 inline LoggableClass::LoggableClass() {

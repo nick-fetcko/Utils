@@ -43,7 +43,65 @@ std::ofstream Logger::file;
 
 std::size_t Logger::maxClassNameWidth = 0;
 
-#ifdef _DEBUG
+#if MULTITHREADED_LOGGING
+std::thread Logger::StartWriteThread() {
+	return std::thread([] {
+		std::pair<LogLevel, std::string> message;
+		writing = true;
+		while (writing) {
+			if (messageQueue.size()) {
+				{
+					std::unique_lock lock(queueMutex);
+					message = std::move(messageQueue.front());
+					messageQueue.pop();
+				}
+
+#ifdef WIN32
+				SetConsoleTextAttribute(
+					out,
+					static_cast<WORD>(Colors.at(message.first))
+				);
+#endif
+
+				std::cout << message.second << std::endl;
+
+#ifdef WIN32
+				SetConsoleTextAttribute(
+					out,
+					static_cast<WORD>(WindowsConsoleColors::Default)
+				);
+#endif
+
+				// If we've exceeded the max file size,
+				// open the next log file
+				if (file.is_open()) {
+					if (file.tellp() > MaxFileSize)
+						file = OpenNextFile();
+
+					file <<
+#ifndef __ANDROID__
+						// Remove leading carriage return
+						message.second.substr(1)
+#else
+						message
+#endif
+						<< std::endl;
+
+				}
+			}
+
+			std::this_thread::sleep_for(5ms);
+		}
+	});
+}
+std::queue<std::pair<LogLevel, std::string>> Logger::messageQueue;
+std::mutex Logger::queueMutex;
+bool Logger::writing = false;
+std::thread Logger::writeThread = Logger::StartWriteThread();
+Logger Logger::globalLogger;
+#endif
+
+#if defined(_DEBUG) && !MULTITHREADED_LOGGING
 std::thread Logger::StartReadThread() {
 	std::thread ret { [] {
 		std::string line;
@@ -94,6 +152,19 @@ std::function<bool()> Logger::isClosed;
 // ===============================================
 // ============= Member Functions ================
 // ===============================================
+#if MULTITHREADED_LOGGING
+Logger::~Logger() {
+	// Use our static logger
+	// to determine when the
+	// last logger is destructed
+	if (this == &globalLogger) {
+		writing = false;
+		if (writeThread.joinable())
+			writeThread.join();
+	}
+}
+#endif
+
 void Logger::AddCommands(std::map<std::string, Command> &&commands) {
 	std::unique_lock lock(mutex);
 
