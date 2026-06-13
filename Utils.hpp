@@ -20,7 +20,7 @@ private:
 	static std::filesystem::path ResourceFolder;
 
 public:
-	static std::string GetStringFromFile(const std::filesystem::path &path);
+	static std::string GetStringFromFile(const std::filesystem::path &path, std::size_t max = 0);
 	static void SetResourceFolder(const std::filesystem::path &path);
 	static std::filesystem::path GetResourceFolder();
 	static std::filesystem::path GetResource(const std::filesystem::path &path);

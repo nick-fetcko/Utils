@@ -11,7 +11,7 @@ std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> Utils::Utf8ToUtf16Wide;
 std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> Utils::Utf8ToUtf16;
 std::filesystem::path Utils::ResourceFolder;
 
-std::string Utils::GetStringFromFile(const std::filesystem::path & path) {
+std::string Utils::GetStringFromFile(const std::filesystem::path & path, std::size_t max) {
 	// Derived from https://stackoverflow.com/a/525103
 	std::ifstream inFile(path, std::ios::in | std::ios::binary);
 
@@ -25,6 +25,9 @@ std::string Utils::GetStringFromFile(const std::filesystem::path & path) {
 	auto fileSize = std::filesystem::file_size(path);
 
 	if (!fileSize) return "";
+
+	if (max && fileSize > max)
+		fileSize = max;
 
 	std::vector<char> bytes(fileSize);
 	inFile.read(bytes.data(), fileSize);
