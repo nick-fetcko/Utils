@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <typeindex>
 #include <vector>
@@ -179,6 +180,8 @@ public:
 		std::size_t extendedAsciiChars = 0;
 		std::size_t shiftJisChars = 0;
 
+		std::set<char> uniqueChars;
+
 		for (std::size_t i = 0; i < str.size(); ++i) {
 			uint8_t c = str[i];
 
@@ -190,17 +193,33 @@ public:
 					if (next >= 0x40 && next <= 0x9E && next != 0x7F) {
 						++i; // Skip next byte
 						++shiftJisChars;
+						uniqueChars.emplace(c);
 					} else if (next >= 0x9F && next <= 0xFC) {
 						++i; // Skip next byte
 						++shiftJisChars;
-					} else ++extendedAsciiChars;
-				} else ++extendedAsciiChars;
-			} else if (c > 127) ++extendedAsciiChars;
+						uniqueChars.emplace(c);
+					}
+				}
+			}
+
+			if (c > 127) {
+				++extendedAsciiChars;
+				uniqueChars.emplace(c);
+			}
 		}
 
-		if (shiftJisChars >= matches) return Encoding::ShiftJis;
-		else if (extendedAsciiChars >= matches) return Encoding::Windows1252;
-		else return Encoding::Ascii;
+		// A number of extended ASCII characters
+		// generate false positive Shift-JIS
+		// hits, so bias towards Windows-1252
+		if (shiftJisChars >= matches &&
+			shiftJisChars >= extendedAsciiChars &&
+			// More unique characters == more likely to be Shift-JIS
+			uniqueChars.size() > (shiftJisChars * 0.25f))
+			return Encoding::ShiftJis;
+		else if (extendedAsciiChars >= matches) 
+			return Encoding::Windows1252;
+		else 
+			return Encoding::Ascii;
 	}
 
 	static std::pair<bool, int> ExtractDigitsFromString(const std::string &str, bool onlyAtStart = false) {
