@@ -180,8 +180,6 @@ public:
 		std::size_t extendedAsciiChars = 0;
 		std::size_t shiftJisChars = 0;
 
-		std::set<char> uniqueChars;
-
 		for (std::size_t i = 0; i < str.size(); ++i) {
 			uint8_t c = str[i];
 
@@ -193,28 +191,21 @@ public:
 					if (next >= 0x40 && next <= 0x9E && next != 0x7F) {
 						++i; // Skip next byte
 						++shiftJisChars;
-						uniqueChars.emplace(c);
 					} else if (next >= 0x9F && next <= 0xFC) {
 						++i; // Skip next byte
 						++shiftJisChars;
-						uniqueChars.emplace(c);
 					}
 				}
 			}
-
-			if (c > 127) {
+			
+			// Look for specific Windows-1252 characters
+			if ((c >= 0x91 && c <= 0x97 /* Punctuation */) ||
+				(c >= 0xE8 && c <= 0xEB) /* 'e' with accent marks */)
 				++extendedAsciiChars;
-				uniqueChars.emplace(c);
-			}
 		}
 
-		// A number of extended ASCII characters
-		// generate false positive Shift-JIS
-		// hits, so bias towards Windows-1252
 		if (shiftJisChars >= matches &&
-			shiftJisChars >= extendedAsciiChars &&
-			// More unique characters == more likely to be Shift-JIS
-			uniqueChars.size() > (shiftJisChars * 0.25f))
+			shiftJisChars > extendedAsciiChars)
 			return Encoding::ShiftJis;
 		else if (extendedAsciiChars >= matches) 
 			return Encoding::Windows1252;
