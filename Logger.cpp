@@ -31,6 +31,7 @@ namespace Fetcko {
 // ===============================================
 // =========== Initializing Statics ==============
 // ===============================================
+std::function<void(const std::string &, const std::string &)> Logger::errorHandler = nullptr;
 std::mutex Logger::mutex;
 std::map<std::string, Logger::Command> Logger::commands;
 std::queue<std::pair<Logger::Command, std::vector<std::string>>> Logger::commandQueue;

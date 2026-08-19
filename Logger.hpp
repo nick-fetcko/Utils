@@ -79,6 +79,26 @@ public:
 	template<typename T, typename... Args>
 	void LogError(T t, Args... args) const;
 
+	// Logs an error and calls the error handler
+	// (if the template argument is true and one 
+	// has been assigned). The handler is presumed
+	// to present the error to the user, so a title
+	// is required.
+	// 
+	// MUST be called from the same thread as the handler
+	template<bool Handle, typename T, typename... Args>
+	void LogError(const std::string &title, T t, Args... args) const;
+
+	// Logs an error and calls the error handler
+	// (if the template argument is true and one 
+	// has been assigned). The handler is presumed
+	// to present the error to the user, so a title
+	// is required.
+	// 
+	// MUST be called from the same thread as the handler
+	template<bool Handle, typename T, typename... Args>
+	void LogError(const std::string &title, T t) const;
+
 	virtual const std::string &GetName() const { return name; }
 
 	LoggableClass &operator=(const LoggableClass &) = default;
@@ -120,6 +140,7 @@ private:
 
 public:
 	static LogLevel logLevel;
+	static std::function<void(const std::string &, const std::string &)> errorHandler;
 
 #if MULTITHREADED_LOGGING
 	~Logger();
@@ -158,6 +179,32 @@ public:
 		PrintPrompt(LogLevel::Warning);
 	}
 
+	template<bool Handle, typename T, typename... Args>
+	void LogError(const std::string &title, T t) {
+		std::unique_lock lock(mutex, std::defer_lock);
+
+		if (!processingCommands.load()) lock.lock();
+
+		Log(LogLevel::Error, t);
+		if (errorHandler && Handle) {
+			HandleError(title);
+		}
+		PrintPrompt(LogLevel::Error);
+	}
+
+	template<bool Handle, typename T, typename... Args>
+	void LogError(const std::string &title, T t, Args... args) {
+		std::unique_lock lock(mutex, std::defer_lock);
+
+		if (!processingCommands.load()) lock.lock();
+
+		Log(LogLevel::Error, t, args...);
+		if (errorHandler && Handle) {
+			HandleError(title);
+		}
+		PrintPrompt(LogLevel::Error);
+	}
+
 	template<typename T, typename... Args>
 	void LogError(T t, Args... args) {
 		std::unique_lock lock(mutex, std::defer_lock);
@@ -183,6 +230,13 @@ public:
 private:
 	static std::ofstream OpenFile();
 	static std::ofstream OpenNextFile();
+
+	void HandleError(const std::string &title) {
+		auto message = stream.str();
+
+		if (const auto messageStart = message.find("]: "); messageStart != std::string::npos)
+			errorHandler(title, message.substr(messageStart + 3));
+	}
 
 	template <typename T>
 	void Log(T t) {
@@ -435,6 +489,16 @@ inline void LoggableClass::LogWarning(T t, Args... args) const {
 template<typename T, typename... Args>
 inline void LoggableClass::LogError(T t, Args... args) const {
 	logger->LogError(t, args...);
+}
+
+template<bool Handle, typename T, typename... Args>
+inline void LoggableClass::LogError(const std::string &title, T t, Args... args) const {
+	logger->LogError<Handle>(t, args...);
+}
+
+template<bool Handle, typename T, typename... Args>
+inline void LoggableClass::LogError(const std::string &title, T t) const {
+	logger->LogError<Handle>(title, t);
 }
 
 template<> 
