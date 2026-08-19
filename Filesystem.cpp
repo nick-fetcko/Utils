@@ -27,6 +27,8 @@ std::filesystem::path Filesystem::GetPath(const std::string &fileName) {
 	}
 #elif defined(__ANDROID__)
 	ret = Filesystem::path;
+#elif defined (USING_FLATPAK)
+	ret = std::filesystem::path("/var/config");
 #elif defined(__linux__)
 	ret = std::filesystem::path(getenv("HOME")) / ".config";
 	if (!std::filesystem::exists(ret))

@@ -34,3 +34,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 	# Gone Too Soon
 	target_compile_options(Utils PRIVATE -Wno-deprecated-declarations)
 endif()
+
+if (USING_FLATPAK)
+    target_compile_definitions(Utils PUBLIC USING_FLATPAK)
+endif()
