@@ -233,7 +233,7 @@ public:
 		return Utf8ToUtf16.to_bytes(utf16);
 	}
 
-	static std::string GetFriendlyBytes(const std::size_t bytes) {
+	static std::string GetFriendlyBytes(const std::size_t bytes, bool exact = true) {
 		constexpr std::array<std::string_view, 6> Suffixes = {
 			"B",
 			"KB",
@@ -251,7 +251,11 @@ public:
 		}
 
 		std::stringstream stream;
-		stream << std::fixed << std::setprecision(2) << div << " " << Suffixes[index];
+
+		if (exact)
+			stream << std::fixed << std::setprecision(2) << div << " " << Suffixes[index];
+		else
+			stream << std::lround(div) << Suffixes[index];
 
 		return stream.str();
 	}
