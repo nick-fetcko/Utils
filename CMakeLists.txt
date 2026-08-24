@@ -10,6 +10,7 @@ set(_utils_headers
 	Base64.hpp
 	Filesystem.hpp
 	Hash.hpp
+	Italics.hpp
 	Utils.hpp
 	Logger.hpp
 	ShiftJIS.hpp
