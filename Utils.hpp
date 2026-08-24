@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <locale>
+#include <cmath>
 #include <codecvt>
 #include <filesystem>
 #include <fstream>
