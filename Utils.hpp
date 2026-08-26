@@ -18,6 +18,7 @@ class Utils {
 private:
 	static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> Utf8ToUtf16Wide;
 	static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> Utf8ToUtf16;
+	static std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> Utf8ToUtf32;
 
 	static std::filesystem::path ResourceFolder;
 
@@ -232,6 +233,14 @@ public:
 
 	static std::string ToUTF8(const std::u16string &utf16) {
 		return Utf8ToUtf16.to_bytes(utf16);
+	}
+
+	static std::u32string ToUTF32(const std::string &utf8) {
+		return Utf8ToUtf32.from_bytes(utf8);
+	}
+
+	static std::string ToUTF8(const std::u32string &utf32) {
+		return Utf8ToUtf32.to_bytes(utf32);
 	}
 
 	static std::string GetFriendlyBytes(const std::size_t bytes, bool exact = true) {

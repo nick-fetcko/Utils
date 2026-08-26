@@ -9,6 +9,7 @@
 namespace Fetcko {
 std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> Utils::Utf8ToUtf16Wide;
 std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> Utils::Utf8ToUtf16;
+std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> Utils::Utf8ToUtf32;
 std::filesystem::path Utils::ResourceFolder;
 
 std::string Utils::GetStringFromFile(const std::filesystem::path & path, std::size_t max) {
