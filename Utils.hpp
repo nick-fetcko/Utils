@@ -270,6 +270,39 @@ public:
 		return stream.str();
 	}
 
+	static std::string Truncate(const std::string &utf8, std::size_t maxBytes, bool ellipsis = false) {
+		const auto utf32 = ToUTF32(utf8);
+
+		std::u32string ret;
+
+		std::size_t bytes = ellipsis ? 3 : 0;
+
+		bool maxedOut = false;
+
+#pragma warning(push)
+#pragma warning(disable:4566) // character cannot be represented in the current code page
+		for (const auto &c : utf32) {
+			if (c <= '\u007F') // 1 byte
+				++bytes;
+			else if (c <= '\u07FF') // 2 bytes
+				bytes += 2;
+			else if (c <= '\uFFFF') // 3 bytes
+				bytes += 3;
+			else
+				bytes += 4;
+
+			if (bytes < maxBytes) {
+				ret += c;
+			} else {
+				maxedOut = true;
+				break;
+			}
+		}
+#pragma warning(pop)
+
+		return ToUTF8(ret) + (ellipsis && maxedOut ? "..." : "");
+	}
+
 	// From http://reedbeta.com/blog/python-like-enumerate-in-cpp17/
 	template<typename T,
 		typename TIter = decltype(std::begin(std::declval<T>())),
