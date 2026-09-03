@@ -282,11 +282,11 @@ public:
 #pragma warning(push)
 #pragma warning(disable:4566) // character cannot be represented in the current code page
 		for (const auto &c : utf32) {
-			if (c <= '\u007F') // 1 byte
+			if (c <= U'\u007F') // 1 byte
 				++bytes;
-			else if (c <= '\u07FF') // 2 bytes
+			else if (c <= U'\u07FF') // 2 bytes
 				bytes += 2;
-			else if (c <= '\uFFFF') // 3 bytes
+			else if (c <= U'\uFFFF') // 3 bytes
 				bytes += 3;
 			else
 				bytes += 4;
